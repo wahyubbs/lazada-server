@@ -1,15 +1,24 @@
 import express from "express";
 import cors from "cors";
+import bodyParser from "body-parser";
 
-import { createProduct, getSeller } from "./productManagement";
+import {
+  createProduct,
+  getBrand,
+  getCategoryAttribute,
+  getCategoryTree,
+  getProduct,
+  updateProduct,
+  uploadImageProduct,
+} from "./productManagement";
+import { getSeller } from "./sellerManagement";
 import { generateAccessToken, generateRefreshToken } from "./systemManagement";
 
 const app = express();
 app.use(cors());
 app.options("*", cors());
-app.use(express.json());
-
-const port = 3000;
+app.use(express.json({ limit: "50mb" }));
+const port = 443;
 export const appKey = "127361";
 export const secretKey = "UPqXIbgX43AVFjXZ8rnWHMPUbzObUX0W";
 export const lazadaApiUrl = "https://api.lazada.com/rest";
@@ -81,20 +90,102 @@ app.post("/seller/info", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+app.post("/product/categorytree", async (req, res) => {
+  const accessToken = req.body.access_token;
+  try {
+    let dataCategory = await getCategoryTree(accessToken);
+    res.send(dataCategory);
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+app.post("/product/categoryattribute", async (req, res) => {
+  const accessToken = req.body.access_token;
+  const primaryCategoryCode = req.body.primary_category_id;
 
+  try {
+    let dataCategory = await getCategoryAttribute(
+      accessToken,
+      primaryCategoryCode
+    );
+    console.log("categoryattribute:", dataCategory);
+    res.send(dataCategory);
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+app.post("/product/brand", async (req, res) => {
+  const accessToken = req.body.access_token;
+  const startRow = req.body.start_row;
+  const pageSize = req.body.page_size;
+
+  try {
+    let dataBrand = await getBrand(accessToken, startRow, pageSize);
+    console.log("brand:", dataBrand);
+    res.send(dataBrand);
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
 app.post("/product/create", async (req, res) => {
   const accessToken = req.body.access_token;
-  const form = JSON.parse(req.body.form);
-  form.Images = JSON.parse(form.Images);
-  form.Attributes = JSON.parse(form.Attributes);
-  form.Skus = { sku: JSON.parse(form.Skus.sku) };
+  const form = req.body.form;
 
   try {
     const product = await createProduct(form, accessToken);
     console.log("product", product);
-    res.send("create product successful!");
+    res.send(product);
   } catch (error) {
     console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+app.post("/product/update", async (req, res) => {
+  const accessToken = req.body.access_token;
+  const data = req.body.data;
+
+  try {
+    const product = await updateProduct(data, accessToken);
+    console.log("product", product);
+    res.send(product);
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+app.post("/product/get", async (req, res) => {
+  const accessToken = req.body.access_token;
+  const filter = req.body.filter;
+  const limit = req.body.limit;
+  const sku_seller_list = req.body.sku_seller_list;
+
+  try {
+    const product = await getProduct(
+      accessToken,
+      filter,
+      limit,
+      sku_seller_list
+    );
+    console.log("get product", JSON.stringify(product));
+    res.send(product);
+  } catch (error) {
+    console.error("Error:", error.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+app.post("/image/upload", async (req, res) => {
+  const accessToken = req.body.access_token;
+  const image = req.body.image;
+  console.log(image);
+  try {
+    const response = await uploadImageProduct(image, accessToken);
+    console.log("image", response);
+    res.send("upload image successful!");
+  } catch (error) {
+    console.error("Error:", error);
     res.status(500).send("Internal Server Error");
   }
 });
